@@ -1,0 +1,12 @@
+{
+  "name": "session-retro",
+  "description": "Interactive session retrospectives with auto-nudging and memory integration",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jason Matthew"
+  },
+  "license": "MIT",
+  "engines": {
+    "claude-code": ">=2.1.110"
+  }
+}

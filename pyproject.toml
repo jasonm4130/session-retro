@@ -1,0 +1,9 @@
+[project]
+name = "session-retro"
+version = "0.1.0"
+description = "Claude Code plugin for interactive session retrospectives"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
