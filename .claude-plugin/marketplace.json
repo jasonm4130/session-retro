@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "session-retro",
-      "source": ".",
+      "source": "./",
       "description": "Auto-detects substantial sessions, nudges for interactive retrospectives, and writes structured memory entries capturing decisions, learnings, and rationale",
       "version": "0.1.0",
       "author": {
