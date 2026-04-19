@@ -13,8 +13,8 @@ Claude Code plugin for interactive session retrospectives with auto-nudging and 
 ## Install
 
 ```
-/plugin marketplace add jasonmatthew/session-retro
-/plugin install session-retro@jasonmatthew-session-retro
+/plugin marketplace add jasonm4130/session-retro
+/plugin install session-retro@jasonm4130-session-retro
 ```
 
 ## Usage
