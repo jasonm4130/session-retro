@@ -13,7 +13,7 @@ from pathlib import Path
 # Add plugin root to path so we can import lib/
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from lib.parser import parse_session
+from lib.parser import parse_session, summarize_session
 
 
 def main():
@@ -25,6 +25,11 @@ def main():
         "--condensed",
         action="store_true",
         help="Skip routine tool calls, keep key moments only",
+    )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Compact summary with stats + key moments only (low token cost)",
     )
     parser.add_argument(
         "--include-subagents",
@@ -39,11 +44,17 @@ def main():
         print(f"Error: file not found: {jsonl_path}", file=sys.stderr)
         sys.exit(1)
 
-    result = parse_session(
-        jsonl_path,
-        condensed=args.condensed,
-        include_subagents=args.include_subagents,
-    )
+    if args.summary:
+        result = summarize_session(
+            jsonl_path,
+            include_subagents=args.include_subagents,
+        )
+    else:
+        result = parse_session(
+            jsonl_path,
+            condensed=args.condensed,
+            include_subagents=args.include_subagents,
+        )
 
     json.dump(result, sys.stdout, indent=2)
     print()  # trailing newline

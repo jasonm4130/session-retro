@@ -26,16 +26,22 @@ last session ({date}, {duration}, {summary}). Want to review that one too, or
 focus on the current session?"
 
 For the current session, parse the transcript using the session-retro-parse tool
-(available on PATH via the plugin's bin/ directory):
+(available on PATH via the plugin's bin/ directory).
+
+**Always start with `--summary` mode** to keep token cost low:
 
 ```bash
-session-retro-parse <transcript_path> --include-subagents
+session-retro-parse <transcript_path> --summary --include-subagents
 ```
 
-If the JSONL file is larger than 2MB, add `--condensed`:
+This returns stats + key moments only (~300-500 tokens). Use this to drive the
+guided conversation. Do NOT load the full timeline unless you need to investigate
+a specific moment in more detail — the full output can be 5000+ tokens.
+
+If you need full detail on a specific part of the session (rare), use:
 
 ```bash
-session-retro-parse <transcript_path> --include-subagents --condensed
+session-retro-parse <transcript_path> --condensed --include-subagents
 ```
 
 The transcript path is available from the session context. If you cannot determine

@@ -213,6 +213,67 @@ def parse_session(
     }
 
 
+def summarize_session(
+    jsonl_path: str | Path,
+    include_subagents: bool = False,
+) -> dict:
+    """Produce a compact session summary for low-token-cost retros.
+
+    Returns stats + key moments only (decisions, errors, corrections, commits).
+    Typically 300-500 tokens vs 5000+ for a full parse.
+    """
+    full = parse_session(
+        jsonl_path, condensed=True, include_subagents=include_subagents
+    )
+
+    key_moments = []
+    for event in full["timeline"]:
+        etype = event["type"]
+        if etype == "user_correction":
+            key_moments.append({
+                "type": "correction",
+                "timestamp": event.get("timestamp", ""),
+                "summary": event.get("raw", "")[:150],
+            })
+        elif etype == "error":
+            key_moments.append({
+                "type": "error",
+                "timestamp": event.get("timestamp", ""),
+                "summary": f"{event.get('tool', '?')}: {event.get('error', '')[:100]}",
+            })
+        elif etype == "git_commit":
+            key_moments.append({
+                "type": "commit",
+                "timestamp": event.get("timestamp", ""),
+                "summary": event.get("message", "")[:100],
+            })
+        elif etype == "subagent":
+            key_moments.append({
+                "type": "subagent",
+                "timestamp": event.get("timestamp", ""),
+                "summary": f"{event.get('subagentType', event.get('agentType', '?'))}: {event.get('description', '')[:80]}",
+            })
+        # Skip routine user messages — they're not retro-worthy on their own.
+        # Corrections, errors, commits, and subagents are the signal.
+
+    # Compact stats — file count instead of full paths
+    compact_stats = {
+        **full["stats"],
+        "filesChanged": len(full["stats"]["filesChanged"]),
+    }
+
+    return {
+        "sessionId": full["sessionId"],
+        "startedAt": full["startedAt"],
+        "endedAt": full["endedAt"],
+        "cwd": full["cwd"],
+        "version": full["version"],
+        "gitBranch": full["gitBranch"],
+        "stats": compact_stats,
+        "keyMoments": key_moments,
+    }
+
+
 def _load_lines(jsonl_path: Path) -> list[dict]:
     """Load and parse all JSON lines from a file."""
     lines = []

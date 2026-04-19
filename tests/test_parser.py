@@ -1,6 +1,6 @@
 """Tests for JSONL session parser."""
 
-from lib.parser import parse_session
+from lib.parser import parse_session, summarize_session
 
 
 class TestParseSession:
@@ -125,3 +125,39 @@ class TestSubagentInclusion:
             fixtures_dir / "small_session.jsonl", include_subagents=True
         )
         assert "timeline" in result
+
+
+class TestSummarizeSession:
+    """Test compact summary mode."""
+
+    def test_returns_stats_and_key_moments(self, fixtures_dir):
+        result = summarize_session(fixtures_dir / "session_with_errors.jsonl")
+        assert "stats" in result
+        assert "keyMoments" in result
+        assert result["sessionId"] == "errors-001"
+
+    def test_files_changed_is_count_not_list(self, fixtures_dir):
+        result = summarize_session(fixtures_dir / "session_with_errors.jsonl")
+        assert isinstance(result["stats"]["filesChanged"], int)
+
+    def test_includes_errors_and_corrections(self, fixtures_dir):
+        result = summarize_session(fixtures_dir / "session_with_errors.jsonl")
+        types = [m["type"] for m in result["keyMoments"]]
+        assert "error" in types
+        assert "correction" in types
+
+    def test_includes_commits(self, fixtures_dir):
+        result = summarize_session(fixtures_dir / "session_with_errors.jsonl")
+        types = [m["type"] for m in result["keyMoments"]]
+        assert "commit" in types
+
+    def test_excludes_routine_user_messages(self, fixtures_dir):
+        result = summarize_session(fixtures_dir / "small_session.jsonl")
+        types = [m["type"] for m in result["keyMoments"]]
+        assert "user_message" not in types
+
+    def test_much_smaller_than_full_parse(self, fixtures_dir):
+        import json
+        summary = summarize_session(fixtures_dir / "session_with_errors.jsonl")
+        full = parse_session(fixtures_dir / "session_with_errors.jsonl")
+        assert len(json.dumps(summary)) < len(json.dumps(full))
