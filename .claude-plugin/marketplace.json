@@ -4,14 +4,14 @@
     "name": "Jason Matthew"
   },
   "metadata": {
-    "description": "Interactive session retrospectives with auto-nudging and memory integration for Claude Code"
+    "description": "Interactive session retrospectives powered by claude-mem for Claude Code"
   },
   "plugins": [
     {
       "name": "session-retro",
       "source": "./",
-      "description": "Auto-detects substantial sessions, nudges for interactive retrospectives, and writes structured memory entries capturing decisions, learnings, and rationale",
-      "version": "0.1.0",
+      "description": "Interactive session retrospectives powered by claude-mem — queries session observations, guided walkthrough, writes to native memory and claude-mem",
+      "version": "0.2.0",
       "author": {
         "name": "Jason Matthew"
       },
