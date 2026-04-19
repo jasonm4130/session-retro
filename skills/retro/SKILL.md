@@ -28,21 +28,16 @@ focus on the current session?"
 For the current session, parse the transcript using the session-retro-parse tool
 (available on PATH via the plugin's bin/ directory).
 
-**Always start with `--summary` mode** to keep token cost low:
+**IMPORTANT: Only use `--summary` mode.** Never use `--condensed` or full parse — they
+dump 30,000+ tokens into context and will blow through the user's token budget.
 
 ```bash
 session-retro-parse <transcript_path> --summary --include-subagents
 ```
 
-This returns stats + key moments only (~300-500 tokens). Use this to drive the
-guided conversation. Do NOT load the full timeline unless you need to investigate
-a specific moment in more detail — the full output can be 5000+ tokens.
-
-If you need full detail on a specific part of the session (rare), use:
-
-```bash
-session-retro-parse <transcript_path> --condensed --include-subagents
-```
+This returns stats + key moments only (~1,400 tokens). This is all you need to drive
+the guided conversation. The key moments contain errors, corrections, commits, and
+subagent dispatches — enough to ask targeted questions without the full timeline.
 
 The transcript path is available from the session context. If you cannot determine
 it, check `${CLAUDE_PLUGIN_DATA}/activity-*.json` files for the current session's
