@@ -15,7 +15,10 @@ Claude Code plugin for interactive session retrospectives with auto-nudging and 
 ```
 /plugin marketplace add jasonm4130/session-retro
 /plugin install session-retro@jasonm4130-session-retro
+/reload-plugins
 ```
+
+On first load, Claude Code will prompt you to approve the plugin's hooks (PreToolUse, SessionStart, SessionEnd). This is normal — plugins that execute code require explicit user trust. Approve to enable auto-nudging and session capture.
 
 ## Usage
 
