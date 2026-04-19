@@ -7,8 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 SCRIPT = Path(__file__).parent.parent / "scripts" / "extract-on-compact.py"
 FIXTURES = Path(__file__).parent / "fixtures"
 
