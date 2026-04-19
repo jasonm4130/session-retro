@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(shellcheck:*)",
+      "Bash(python3:*)",
+      "Bash(bash:*)",
+      "Bash(./scripts/*)",
+      "Bash(./bin/*)",
+      "Bash(claude --plugin-dir*)",
+      "Bash(jq:*)",
+      "Bash(stat:*)",
+      "Bash(file:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(xargs:*)",
+      "Bash(touch:*)",
+      "Bash(rm:*)",
+      "Bash(test:*)"
+    ]
+  }
+}
