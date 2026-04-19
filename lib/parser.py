@@ -342,7 +342,7 @@ def _load_subagent_summaries(
     # Attach metadata to subagent events
     for event in timeline:
         if event.get("type") == "subagent":
-            for name, meta in meta_files.items():
+            for _, meta in meta_files.items():
                 if meta.get("agentType") == event.get("subagentType"):
                     event["meta"] = meta
                     break

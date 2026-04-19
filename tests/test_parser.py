@@ -1,8 +1,5 @@
 """Tests for JSONL session parser."""
 
-import json
-from pathlib import Path
-
 from lib.parser import parse_session
 
 
