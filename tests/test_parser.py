@@ -68,3 +68,60 @@ class TestParseSession:
         result = parse_session(fixtures_dir / "small_session.jsonl")
         timestamps = [e["timestamp"] for e in result["timeline"]]
         assert timestamps == sorted(timestamps)
+
+
+class TestCondensedMode:
+    """Test condensed timeline for large sessions."""
+
+    def test_keeps_user_messages(self, fixtures_dir):
+        result = parse_session(fixtures_dir / "small_session.jsonl", condensed=True)
+        user_msgs = [e for e in result["timeline"] if e["type"] == "user_message"]
+        assert len(user_msgs) == 2
+
+    def test_keeps_errors(self, fixtures_dir):
+        result = parse_session(
+            fixtures_dir / "session_with_errors.jsonl", condensed=True
+        )
+        errors = [e for e in result["timeline"] if e["type"] == "error"]
+        assert len(errors) == 1
+
+    def test_keeps_corrections(self, fixtures_dir):
+        result = parse_session(
+            fixtures_dir / "session_with_errors.jsonl", condensed=True
+        )
+        corrections = [e for e in result["timeline"] if e["type"] == "user_correction"]
+        assert len(corrections) == 1
+
+    def test_keeps_git_commits(self, fixtures_dir):
+        result = parse_session(fixtures_dir / "small_session.jsonl", condensed=True)
+        commits = [e for e in result["timeline"] if e["type"] == "git_commit"]
+        assert len(commits) == 1
+
+    def test_keeps_first_and_last_per_file(self, fixtures_dir):
+        result = parse_session(
+            fixtures_dir / "session_with_errors.jsonl", condensed=True
+        )
+        tool_calls = [e for e in result["timeline"] if e["type"] == "tool_call"]
+        auth_calls = [e for e in tool_calls if e.get("target") == "src/auth.ts"]
+        assert len(auth_calls) <= 2
+
+
+class TestSubagentInclusion:
+    """Test subagent metadata loading."""
+
+    def test_includes_subagent_from_meta(self, fixtures_dir):
+        result = parse_session(
+            fixtures_dir / "session_with_subagents" / "main.jsonl",
+            include_subagents=True,
+        )
+        subagents = [e for e in result["timeline"] if e["type"] == "subagent"]
+        assert len(subagents) >= 1
+        agent_types = [s["subagentType"] for s in subagents]
+        assert "Explore" in agent_types
+
+    def test_subagent_without_meta_dir(self, fixtures_dir):
+        """include_subagents=True should not fail if no subagents dir exists."""
+        result = parse_session(
+            fixtures_dir / "small_session.jsonl", include_subagents=True
+        )
+        assert "timeline" in result
