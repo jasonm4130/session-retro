@@ -1,7 +1,5 @@
 """Tests for memory entry writing."""
 
-from pathlib import Path
-
 from lib.memory import write_memory_entry, update_memory_index
 
 

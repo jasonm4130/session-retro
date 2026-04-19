@@ -6,13 +6,11 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
-
 SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "track-activity.sh"
 
 
 def run_hook(
-    stdin_data: dict, plugin_data: Path, env_extra: dict = None
+    stdin_data: dict, plugin_data: Path, env_extra: dict | None = None
 ) -> subprocess.CompletedProcess:
     """Run the track-activity.sh hook with the given stdin JSON."""
     env = os.environ.copy()
