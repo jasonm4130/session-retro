@@ -8,14 +8,14 @@ At the end of a productive Claude Code session, you've made decisions, hit error
 
 Existing retro tools ([accidentalrebel](https://github.com/accidentalrebel/claude-skill-session-retrospective), [bitwarden](https://github.com/bitwarden/ai-plugins/tree/main/plugins/claude-retrospective)) require manual invocation — and nobody remembers to run them. They produce markdown narratives but don't feed back into Claude's memory system. And if compaction has already run, the critical "why we chose X over Y" reasoning is gone.
 
-session-retro fixes all three problems.
+session-retro automates the nudge, captures to memory, and reads the full transcript before compaction gets to it.
 
 ## What it does
 
-- **Auto-detects substantial sessions** — a PreToolUse hook tracks activity (files changed, subagents spawned, git commits) and primes Claude to suggest a retro at a natural conversational moment
-- **Interactive walkthrough** — Claude leads you through key decisions, corrections, and errors, asking one question at a time
-- **Writes structured memory entries** — feedback, project, and reference types in Claude's standard format so future sessions benefit automatically
-- **Recovers decisions on compaction** — a SessionStart(compact) hook extracts key decisions from the full JSONL transcript before they're lost
+- **Auto-detects substantial sessions** — a PreToolUse hook tracks activity (files changed, subagents, commits) and injects context so Claude knows to suggest a retro when your task wraps up
+- **Interactive walkthrough** — walks through the session chronologically, asking about decisions, corrections, and errors one at a time
+- **Writes structured memory entries** — feedback, project, and reference types in Claude's standard format, indexed in MEMORY.md
+- **Recovers decisions on compaction** — a SessionStart(compact) hook reads the full JSONL (still on disk) and extracts key decisions before they're lost
 
 ## How it works
 
@@ -23,7 +23,7 @@ Three hooks and one skill:
 
 | Component | Hook event | What it does |
 |---|---|---|
-| `track-activity.sh` | PreToolUse | Counts tool calls, file changes, subagents, commits. Once a weighted score threshold is met, injects a one-time `additionalContext` nudge — Claude sees it silently and suggests the retro naturally |
+| `track-activity.sh` | PreToolUse | Counts tool calls, file changes, subagents, commits. Once a weighted score threshold is met, injects a one-time `additionalContext` message that Claude sees silently — no output to the user |
 | `extract-on-compact.py` | SessionStart (compact) | After compaction, reads the full JSONL (still on disk), extracts decision signals via heuristic pattern matching, writes a memory entry, and injects a summary into the fresh context |
 | `capture-session.sh` | SessionEnd | If no retro was done, captures session metadata so the next session can offer a pending retro |
 | `/session-retro:retro` | Skill | The interactive guided walkthrough — parses the session transcript, asks targeted questions about decisions/errors/corrections, writes memory entries |
@@ -52,7 +52,7 @@ After significant work (configurable thresholds), Claude will suggest running a 
 /session-retro:retro
 ```
 
-Or say "retro", "session summary", "what did we learn", or "lessons learned".
+Claude also picks up natural language — "retro", "what did we learn", "session summary" all trigger it.
 
 ### Pending retros
 
