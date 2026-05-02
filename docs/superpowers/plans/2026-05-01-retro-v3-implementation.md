@@ -1,5 +1,7 @@
 # Retro v3 Implementation Plan
 
+> **Status:** SHIPPED 2026-05-02 as v0.3.0. Tasks 2–8 below describe a counter-file approach that was **abandoned mid-implementation** when a code reviewer reproduced 96% data loss under 50-way parallel `PostToolUse` invocations. The shipped design uses an **append-only event log** with Stop-time aggregation. Spec at `docs/superpowers/specs/2026-05-01-retro-v3-design.md` reflects the final design (see § Open Questions for the pivot rationale). The shipped scripts are `posttooluse-append-event.sh` (not `posttooluse-update-counter.sh`) plus `stop-suggest-retro.sh` and `precompact-suggest-retro.sh`. Tests live in `tests/test_event_log_*.sh`, `tests/test_stop_*.sh`, `tests/test_precompact_*.sh`, and `tests/test_session_id_from_stdin.sh` (regression for the manual-e2e finding that PostToolUse passes session_id in stdin, not env var).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rewrite `session-retro` plugin to drop the claude-mem dependency, add deterministic hook-based triggering (PostToolUse counter + Stop threshold + PreCompact safety net), and replace fixed-slot interview with adaptive questions driven by `git diff`. Same plugin name, force-push upgrade, same memory format.
