@@ -66,8 +66,8 @@ deterministic hook-based triggers.
 ├── hooks/hooks.json                         (REWRITTEN — adds PostToolUse + Stop + PreCompact)
 ├── scripts/
 │   ├── mark-session-start.sh                (KEPT — timestamp marker)
-│   ├── posttooluse-update-counter.sh        (NEW — incremental score counter)
-│   ├── stop-suggest-retro.sh                (NEW — reads counter, suggests if threshold met)
+│   ├── posttooluse-append-event.sh          (NEW — appends one JSONL line per tool use)
+│   ├── stop-suggest-retro.sh                (NEW — aggregates events, suggests if threshold met)
 │   └── precompact-suggest-retro.sh          (NEW — always suggests before compaction)
 ├── tests/                                   (NEW — bash tests for the scoring + counter logic)
 ├── README.md                                (UPDATED — drop claude-mem requirement)
@@ -80,20 +80,23 @@ deterministic hook-based triggers.
   ISO-8601 timestamp written by `mark-session-start.sh`. Used by
   `stop-suggest-retro.sh` to compute session duration and by the skill to
   scope `git log --since=$ts`.
-- `${CLAUDE_PLUGIN_DATA}/score-{session_id}.json` —
-  Incrementally maintained counter, e.g.:
-  ```json
-  {
-    "edits": 12,
-    "writes": 3,
-    "bash_calls": 27,
-    "files_touched": ["src/auth.ts", "tests/auth.test.ts"],
-    "first_tool_ts": "2026-05-01T08:00:00Z",
-    "last_tool_ts": "2026-05-01T08:47:00Z",
-    "ran_tests": true,
-    "ran_commit": false
-  }
+- `${CLAUDE_PLUGIN_DATA}/events-{session_id}.jsonl` —
+  Append-only event log. PostToolUse appends one JSON line per tool use:
+  ```jsonl
+  {"ts":"2026-05-01T08:00:00Z","tool":"Edit","input":{"file_path":"/repo/src/auth.ts"}}
+  {"ts":"2026-05-01T08:01:00Z","tool":"Bash","input":{"command":"pytest tests/"}}
+  {"ts":"2026-05-01T08:02:00Z","tool":"Edit","input":{"file_path":"/repo/tests/auth.test.ts"}}
   ```
+  Stop hook reads + aggregates at evaluation time (counts, files_touched dedup,
+  test/commit detection, duration). The append-only shape eliminates the
+  read-modify-write race a counter file would have under parallel tool calls
+  (PostToolUse fires per-tool, not per-batch — Claude Code's parallel tool
+  use is real and observable).
+
+  **On atomicity of append:** POSIX guarantees `O_APPEND` writes smaller than
+  `PIPE_BUF` (typically 4096 bytes on macOS/Linux) are atomic. A single
+  tool-event JSON line stays well under that — the longest tool input we've
+  seen is a Bash command at ~500 bytes, plus ~50 bytes of envelope.
 - `${CLAUDE_PLUGIN_DATA}/retro-fired-{session_id}.flag` —
   Empty sentinel file. Created at the end of `/retro`. Suppresses further
   Stop-hook suggestions for this session (PreCompact still suggests
@@ -104,22 +107,32 @@ deterministic hook-based triggers.
 | Component | Trigger | Reads | Writes | Side effects |
 |---|---|---|---|---|
 | `mark-session-start.sh` | SessionStart hook (any source) | `$CLAUDE_SESSION_ID` | `session-start-{session_id}.txt` | None |
-| `posttooluse-update-counter.sh` | PostToolUse hook (matcher: `Edit\|Write\|Bash`) | `$CLAUDE_SESSION_ID`, hook stdin (tool name + input) | `score-{session_id}.json` | None — pure file IO |
-| `stop-suggest-retro.sh` | Stop hook (no matcher) | `score-{session_id}.json`, `session-start-{session_id}.txt`, `retro-fired-{session_id}.flag` | stdout JSON for `additionalContext` | Emits suggestion only if thresholds met AND `retro-fired` flag absent |
+| `posttooluse-append-event.sh` | PostToolUse hook (matcher: `Edit\|Write\|Bash`) | `$CLAUDE_SESSION_ID`, hook stdin (tool name + input) | Appends one JSONL line to `events-{session_id}.jsonl` | None — single atomic append |
+| `stop-suggest-retro.sh` | Stop hook (no matcher) | `events-{session_id}.jsonl`, `session-start-{session_id}.txt`, `retro-fired-{session_id}.flag` | stdout JSON for `additionalContext` | Aggregates events, evaluates thresholds, emits suggestion only if retro-worthy AND `retro-fired` flag absent |
 | `precompact-suggest-retro.sh` | PreCompact hook (matcher: `auto` + `manual`) | nothing | stdout JSON for `additionalContext` | Always emits suggestion |
-| `skills/retro/SKILL.md` | `/retro` slash command, or natural-language ("retro", "what did we learn") | `score-{session_id}.json`, `session-start-{session_id}.txt`, git state | Native memory files via Write tool, `retro-fired-{session_id}.flag` | The retro conversation itself |
+| `skills/retro/SKILL.md` | `/retro` slash command, or natural-language ("retro", "what did we learn") | `events-{session_id}.jsonl`, `session-start-{session_id}.txt`, git state | Native memory files via Write tool, `retro-fired-{session_id}.flag` | The retro conversation itself |
 
 ## Stop hook scoring algorithm
 
 `stop-suggest-retro.sh` runs every turn. Cost target: <50ms per invocation.
 
 **Inputs:**
-- Read `$CLAUDE_PLUGIN_DATA/score-{session_id}.json`. If absent, exit 0
-  silently — no work has been counted yet.
+- Read `$CLAUDE_PLUGIN_DATA/events-{session_id}.jsonl`. If absent, exit 0
+  silently — no events recorded yet.
 - Read `$CLAUDE_PLUGIN_DATA/session-start-{session_id}.txt` for first
-  timestamp. If absent, fall back to score-file's `first_tool_ts`.
+  timestamp. If absent, fall back to first event's `ts`.
 - Check for `$CLAUDE_PLUGIN_DATA/retro-fired-{session_id}.flag`. If present,
   exit 0 silently — user already ran retro this session.
+
+**Aggregation step (single jq pass over the events file):**
+- `edits` = count of events where `.tool == "Edit"`
+- `writes` = count of events where `.tool == "Write"`
+- `bash_calls` = count of events where `.tool == "Bash"`
+- `files_touched` = unique `.input.file_path` values from Edit/Write events
+- `first_tool_ts` = earliest `.ts`; `last_tool_ts` = latest `.ts`
+- `ran_tests` = any Bash event whose `.input.command` matches the test-runner
+  pattern (`pytest|jest |go test|cargo test|npm test|npm run test|bun test|yarn test`)
+- `ran_commit` = any Bash event whose `.input.command` contains `git commit`
 
 **Threshold (any one of these triggers a suggestion):**
 
@@ -145,15 +158,22 @@ The placeholders are filled with the actual numbers so the suggestion is
 specific. The assistant surfaces it as a natural one-liner in the next
 response — the user sees a Claude-authored nudge, not a system warning.
 
-**Counter file maintenance** (`posttooluse-update-counter.sh`):
+**Event log appender** (`posttooluse-append-event.sh`):
 
 The PostToolUse hook receives JSON on stdin including the tool name and
-input. It reads the existing counter (or starts a new one), updates the
-relevant fields, and writes back. Atomic via a tmp-then-rename pattern.
+input. It extracts the relevant fields and appends a single JSONL line:
 
-- `Edit` or `Write` → increment `edits`/`writes`, append `file_path` to
-  `files_touched` (deduped)
-- `Bash` → increment `bash_calls`. If the command matches `pytest|jest|go test|cargo test|npm (test|run test)|bun test`, set `ran_tests=true`. If
+```bash
+printf '%s\n' "$(jq -c --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{ts: $ts, tool: .tool_name, input: .tool_input}')" >> "$EVENTS_FILE"
+```
+
+That's the entire script body (plus shebang, env defaults, mkdir). One jq
+fork per event. POSIX `O_APPEND` makes the write atomic against parallel
+PostToolUse invocations.
+
+- `Edit`/`Write` → emit event with `tool` and `input.file_path`
+- `Bash` → emit event with `tool` and `input.command`. The Stop hook does
   it matches `git commit`, set `ran_commit=true`.
 - Always update `last_tool_ts`. Set `first_tool_ts` if absent.
 
@@ -320,10 +340,15 @@ Shell tests run in CI via existing GitHub Actions config (already in v0.2).
 
 These are flagged for the implementation phase but don't block design:
 
-1. **Counter file races.** Multiple PostToolUse hooks could fire near-
-   simultaneously if Claude Code parallelises tool calls. Atomic
-   tmp-then-rename should be sufficient, but worth verifying once we
-   measure.
+1. **~~Counter file races.~~ RESOLVED 2026-05-01.** Initial design used a
+   counter file with incremental read-modify-write, "atomic" via tmp-then-
+   rename. Code reviewer reproduced 96% data loss under 50-way parallel
+   PostToolUse invocations — tmp-then-rename prevents torn reads, not lost
+   updates. Switched to append-only event log: PostToolUse just `printf`s
+   one JSONL line per event (atomic per POSIX `O_APPEND` for writes under
+   `PIPE_BUF`), Stop hook aggregates at evaluation time. Eliminates the
+   race entirely AND removes the per-call jq forks that the counter
+   approach incurred.
 2. **MEMORY.md index update conflicts.** If the user is mid-edit on
    MEMORY.md when retro tries to write, we'd want optimistic concurrency.
    For v3 MVP: just append at the end of the file, ignore in-progress
