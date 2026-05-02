@@ -4,14 +4,14 @@
     "name": "Jason Matthew"
   },
   "metadata": {
-    "description": "Interactive session retrospectives powered by claude-mem for Claude Code"
+    "description": "Interactive session retrospectives for Claude Code — deterministic triggers, diff-driven interview, native memory."
   },
   "plugins": [
     {
       "name": "session-retro",
       "source": "./",
-      "description": "Interactive session retrospectives powered by claude-mem — queries session observations, guided walkthrough, writes to native memory and claude-mem",
-      "version": "0.2.0",
+      "description": "Interactive session retrospectives — Stop hook scores your session and suggests /retro at thresholds, PreCompact nudges before context loss, /retro walks you through a diff-driven interview and writes structured native memory entries. Pure bash + git, no external services.",
+      "version": "0.3.0",
       "author": {
         "name": "Jason Matthew"
       },
