@@ -13,5 +13,5 @@ JSONL
 
 OUT=$(echo '{}' | bash "$STOP")
 [ -n "$OUT" ] || { echo "FAIL: expected stdout for commit, got empty"; exit 1; }
-echo "$OUT" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "committed" || { echo "FAIL: msg missing 'committed': $OUT"; exit 1; }
+echo "$OUT" | jq -r '.systemMessage' | grep -q "committed" || { echo "FAIL: msg missing 'committed': $OUT"; exit 1; }
 echo "PASS"

@@ -18,6 +18,6 @@ JSONL
 
 OUT=$(echo '{}' | bash "$STOP")
 [ -n "$OUT" ] || { echo "FAIL: expected stdout for 25-min session, got empty"; exit 1; }
-MSG=$(echo "$OUT" | jq -r '.hookSpecificOutput.additionalContext')
+MSG=$(echo "$OUT" | jq -r '.systemMessage')
 echo "$MSG" | grep -q "minutes of work" || { echo "FAIL: msg missing duration phrase: $MSG"; exit 1; }
 echo "PASS"

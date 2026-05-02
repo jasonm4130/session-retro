@@ -95,10 +95,8 @@ for ((i = 1; i < ${#REASONS[@]}; i++)); do
 done
 
 MSG="[session-retro] This session: ${TRIGGER_REASON}. Suggest running /retro to capture decisions/learnings before /clear."
-jq -n --arg msg "$MSG" '{
-    hookSpecificOutput: {
-        hookEventName: "Stop",
-        additionalContext: $msg
-    }
-}'
+# Stop hook output schema (validated by Claude Code) — does NOT support
+# `hookSpecificOutput`; that's PreToolUse/UserPromptSubmit/PostToolUse only.
+# Use `systemMessage` to surface a passive notice to the user without blocking.
+jq -n --arg msg "$MSG" '{systemMessage: $msg}'
 exit 0

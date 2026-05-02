@@ -30,6 +30,6 @@ JSONL
 
 OUT=$(echo '{"session_id":"stop-test-from-stdin"}' | bash "$STOP")
 [ -n "$OUT" ] || { echo "FAIL: Stop hook didn't trigger when session_id came from stdin"; exit 1; }
-echo "$OUT" | jq -e '.hookSpecificOutput.hookEventName == "Stop"' >/dev/null || { echo "FAIL: bad Stop output: $OUT"; exit 1; }
+echo "$OUT" | jq -e '.systemMessage | type == "string"' >/dev/null || { echo "FAIL: bad Stop output, expected systemMessage string: $OUT"; exit 1; }
 
 echo "PASS"

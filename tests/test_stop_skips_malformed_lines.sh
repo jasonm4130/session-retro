@@ -23,6 +23,6 @@ OUT=$(echo '{}' | bash "$STOP")
 RC=$?
 [ "$RC" = "0" ] || { echo "FAIL: hook exited non-zero ($RC) on malformed line"; exit 1; }
 [ -n "$OUT" ] || { echo "FAIL: expected trigger from 3 valid edits, got empty stdout"; exit 1; }
-MSG=$(echo "$OUT" | jq -r '.hookSpecificOutput.additionalContext')
+MSG=$(echo "$OUT" | jq -r '.systemMessage')
 echo "$MSG" | grep -q "3 edits across 3 files" || { echo "FAIL: expected '3 edits across 3 files' (corrupt lines skipped), got: $MSG"; exit 1; }
 echo "PASS"

@@ -14,9 +14,7 @@ JSONL
 
 OUT=$(echo '{}' | bash "$STOP")
 [ -n "$OUT" ] || { echo "FAIL: expected stdout, got empty"; exit 1; }
-EVENT=$(echo "$OUT" | jq -r '.hookSpecificOutput.hookEventName')
-[ "$EVENT" = "Stop" ] || { echo "FAIL: hookEventName should be Stop, got $EVENT"; exit 1; }
-MSG=$(echo "$OUT" | jq -r '.hookSpecificOutput.additionalContext')
+MSG=$(echo "$OUT" | jq -r '.systemMessage')
 echo "$MSG" | grep -q "3 edits across 2 files" || { echo "FAIL: msg missing '3 edits across 2 files': $MSG"; exit 1; }
 echo "$MSG" | grep -q "/retro" || { echo "FAIL: msg missing '/retro': $MSG"; exit 1; }
 echo "PASS"

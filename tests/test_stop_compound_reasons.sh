@@ -23,7 +23,7 @@ JSONL
 
 OUT=$(echo '{}' | bash "$STOP")
 [ -n "$OUT" ] || { echo "FAIL: expected trigger, got empty"; exit 1; }
-MSG=$(echo "$OUT" | jq -r '.hookSpecificOutput.additionalContext')
+MSG=$(echo "$OUT" | jq -r '.systemMessage')
 # All three reasons should appear
 echo "$MSG" | grep -q "3 edits across 2 files" || { echo "FAIL: missing edits reason: $MSG"; exit 1; }
 echo "$MSG" | grep -q "minutes of work" || { echo "FAIL: missing duration reason: $MSG"; exit 1; }

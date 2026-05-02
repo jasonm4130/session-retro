@@ -13,9 +13,7 @@ touch "$WORKDIR/retro-fired-test-precompact.flag"
 
 OUT=$(echo '{}' | bash "$SCRIPT")
 [ -n "$OUT" ] || { echo "FAIL: expected non-empty stdout, got empty"; exit 1; }
-EVENT=$(echo "$OUT" | jq -r '.hookSpecificOutput.hookEventName')
-[ "$EVENT" = "PreCompact" ] || { echo "FAIL: hookEventName should be PreCompact, got $EVENT"; exit 1; }
-MSG=$(echo "$OUT" | jq -r '.hookSpecificOutput.additionalContext')
+MSG=$(echo "$OUT" | jq -r '.systemMessage')
 echo "$MSG" | grep -q "compact" || { echo "FAIL: msg missing 'compact': $OUT"; exit 1; }
 echo "$MSG" | grep -q "/retro" || { echo "FAIL: msg missing '/retro': $OUT"; exit 1; }
 echo "PASS"

@@ -9,10 +9,8 @@ set -euo pipefail
 cat >/dev/null
 
 MSG="[session-retro] Context is about to compact. If this session had substantial work, run /retro now to capture decisions before details are lost."
-jq -n --arg msg "$MSG" '{
-    hookSpecificOutput: {
-        hookEventName: "PreCompact",
-        additionalContext: $msg
-    }
-}'
+# PreCompact hook output schema (validated by Claude Code) — does NOT support
+# `hookSpecificOutput`; that's PreToolUse/UserPromptSubmit/PostToolUse only.
+# Use `systemMessage` to surface a passive notice to the user without blocking.
+jq -n --arg msg "$MSG" '{systemMessage: $msg}'
 exit 0
