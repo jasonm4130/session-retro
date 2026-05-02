@@ -17,9 +17,14 @@ FIRED_FLAG="$PLUGIN_DATA/retro-fired-${SESSION_ID}.flag"
 # Already retro'd this session → suppress
 [ -f "$FIRED_FLAG" ] && exit 0
 
-# Single-pass aggregation via jq -s (slurp all JSONL lines into one array)
-AGG=$(jq -s '
-    {
+# `-R` reads raw lines (so bad JSON doesn't abort jq); `-s` slurps them.
+# `fromjson?` returns empty (skip) on parse error. `select(. != null)` discards
+# blank/whitespace-only lines after split. Robust to partial writes, mid-line
+# truncation, future appender bugs.
+AGG=$(jq -R -s '
+    split("\n")
+    | map(select(. != "") | fromjson?)
+    | {
         edits: ([.[] | select(.tool == "Edit")] | length),
         writes: ([.[] | select(.tool == "Write")] | length),
         bash_calls: ([.[] | select(.tool == "Bash")] | length),
@@ -56,22 +61,37 @@ DURATION_MIN=$((DURATION_SEC / 60))
 TOTAL_TOOLS=$((EDITS + WRITES + BASH_CALLS))
 EDIT_WRITE=$((EDITS + WRITES))
 
-# Threshold evaluation — any one triggers
-TRIGGER=false
-TRIGGER_REASON=""
+# Threshold evaluation — collect ALL matching reasons, not just the first.
+# More signal = stronger nudge. Conditions are independent; a 25-min session
+# with 3 edits across 2 files reads better as "3 edits across 2 files + 25
+# minutes of work" than as just one or the other.
+REASONS=()
 if [ "$EDIT_WRITE" -ge 3 ] && [ "$FILES_COUNT" -ge 2 ]; then
-    TRIGGER=true; TRIGGER_REASON="${EDIT_WRITE} edits across ${FILES_COUNT} files"
-elif [ "$DURATION_SEC" -ge 1200 ]; then
-    TRIGGER=true; TRIGGER_REASON="${DURATION_MIN} minutes of work"
-elif [ "$RAN_COMMIT" = "true" ]; then
-    TRIGGER=true; TRIGGER_REASON="committed during session"
-elif [ "$RAN_TESTS" = "true" ] && [ "$EDIT_WRITE" -ge 2 ]; then
-    TRIGGER=true; TRIGGER_REASON="ran tests + ${EDIT_WRITE} edits"
-elif [ "$TOTAL_TOOLS" -ge 30 ]; then
-    TRIGGER=true; TRIGGER_REASON="${TOTAL_TOOLS} tool calls"
+    REASONS+=("${EDIT_WRITE} edits across ${FILES_COUNT} files")
+fi
+if [ "$DURATION_SEC" -ge 1200 ]; then
+    REASONS+=("${DURATION_MIN} minutes of work")
+fi
+if [ "$RAN_COMMIT" = "true" ]; then
+    REASONS+=("committed during session")
+fi
+if [ "$RAN_TESTS" = "true" ] && [ "$EDIT_WRITE" -ge 2 ]; then
+    # Only mention this if not already covered by the edits+files trigger
+    if [ "$EDIT_WRITE" -lt 3 ] || [ "$FILES_COUNT" -lt 2 ]; then
+        REASONS+=("ran tests + ${EDIT_WRITE} edits")
+    fi
+fi
+if [ "$TOTAL_TOOLS" -ge 30 ]; then
+    REASONS+=("${TOTAL_TOOLS} tool calls")
 fi
 
-[ "$TRIGGER" = "false" ] && exit 0
+[ "${#REASONS[@]}" -eq 0 ] && exit 0
+
+# Join reasons with " + " (bash ${arr[*]} only uses IFS first char, so build manually)
+TRIGGER_REASON="${REASONS[0]}"
+for ((i = 1; i < ${#REASONS[@]}; i++)); do
+    TRIGGER_REASON="${TRIGGER_REASON} + ${REASONS[i]}"
+done
 
 MSG="[session-retro] This session: ${TRIGGER_REASON}. Suggest running /retro to capture decisions/learnings before /clear."
 jq -n --arg msg "$MSG" '{
