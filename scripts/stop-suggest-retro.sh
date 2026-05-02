@@ -4,11 +4,12 @@
 # Silent otherwise. Cost target <50ms per invocation.
 set -euo pipefail
 
-# Drain hook stdin (we don't need it — all signal comes from the event log)
-cat >/dev/null
-
+# Read hook stdin to extract session_id (Claude Code passes it in the payload,
+# NOT as an env var). Fall back to env var (tests use that) then to "unknown".
+INPUT=$(cat)
 PLUGIN_DATA="${CLAUDE_PLUGIN_DATA:-/tmp/session-retro-data}"
-SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+[ -z "$SESSION_ID" ] && SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
 EVENTS="$PLUGIN_DATA/events-${SESSION_ID}.jsonl"
 FIRED_FLAG="$PLUGIN_DATA/retro-fired-${SESSION_ID}.flag"
 

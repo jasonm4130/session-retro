@@ -8,8 +8,12 @@ INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 [ -z "$TOOL_NAME" ] && exit 0
 
+# Claude Code passes session_id in the hook payload (stdin), NOT as an env var.
+# Fall back to env var (for tests) then to "unknown" (last-resort, will collide
+# across sessions but at least won't crash).
 PLUGIN_DATA="${CLAUDE_PLUGIN_DATA:-/tmp/session-retro-data}"
-SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
+[ -z "$SESSION_ID" ] && SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
 mkdir -p "$PLUGIN_DATA"
 EVENTS="$PLUGIN_DATA/events-${SESSION_ID}.jsonl"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
